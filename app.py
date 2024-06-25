@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-from flask import Flask, request, jsonify, render_template, Response
+from flask import Flask, request, jsonify, render_template, Response, send_from_directory
 import requests
 import json
 import os
@@ -9,11 +8,14 @@ app = Flask(__name__)
 # 从配置文件中settings加载配置
 app.config.from_pyfile('settings.py')
 
+# 创建上传文件夹
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 @app.route("/", methods=["GET"])
 def index():
     return render_template("chat.html")
-
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -93,6 +95,25 @@ def chat():
 
     return Response(generate(), content_type='text/event-stream')
 
+@app.route("/upload", methods=["POST"])
+def upload():
+    if 'file' not in request.files:
+        return jsonify({"error": {"message": "没有文件上传", "type": "invalid_request_error", "code": ""}})
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": {"message": "没有选择文件", "type": "invalid_request_error", "code": ""}})
+    
+    if file:
+        # 保存文件到服务器
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(file_path)
+        
+        return jsonify({"result": file.filename})
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)

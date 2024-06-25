@@ -10,6 +10,20 @@
     <link rel="stylesheet" href="../static/css/github-dark-dimmed.min.css">
     <link rel="stylesheet" href="../static/css/style.css">
     <title><wdl-next-GPT></python-next-GPT></title>
+    <style>
+        .icon-style {
+            margin: 0 10px;
+        }
+        .upload {
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
   <div class="container">
@@ -66,14 +80,20 @@
                       </div>
                     </div>
                     <div class="settings-common">
-                      <span><i class="fa fa-retweet fa-lg" aria-hidden="true"></i>&nbsp; 开启连续对话，加倍消耗tokens</span>
-                      <div class="chck-btn">
-                        <input id="chck-2" type="checkbox">
-                        <label for="chck-2" class="check-trail">
-                        <div class="check-handler"></div>
-                        </label>
-                      </div>
-                    </div>
+                      <span><i class="fa fa-reddit-alien fa-lg" aria-hidden="true"></i>&nbsp; AI 服务</span>
+                      <select class="form-control ipt-common ai-service">
+                          <option value="openai">OpenAI</option>
+                          <option value="geminiai">GeminiAI</option>
+                      </select>
+                  </div>
+                  <div class="settings-common">
+                      <span><i class="fa fa-rocket fa-lg" aria-hidden="true"></i>&nbsp; 模型</span>
+                      <select class="form-control ipt-common model">
+                          <!-- 这里是默认的 OpenAI 模型选项 -->
+                          <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                          <option value="gpt-4">gpt-4</option>
+                      </select>
+                  </div>
                   </div>
                 </div>
               </div>
@@ -88,6 +108,12 @@
                 </div>
                 <div class="delete common">
                   <a class="icon-style" title="删除历史记录"><i class="fa fa-trash-o fa-lg" aria-hidden="true"></i></a>
+                </div>
+                <div class="upload common">
+                  <form id="uploadForm" enctype="multipart/form-data" style="display: inline;">
+                    <input type="file" id="fileInput" name="file" style="display: none;">
+                    <a class="icon-style" id="uploadIcon" title="上传图片"><i class="fa fa-upload fa-lg" aria-hidden="true"></i></a>
+                  </form>
                 </div>
               </div>
             </div>
@@ -116,4 +142,59 @@
 <script src="../static/js/marked.min.js"></script>
 <script src="../static/js/html2canvas.min.js"></script>
 <script src="../static/js/custom.js"></script>
-</html>
+<script>
+  $(document).ready(function() {
+    $('#uploadIcon').click(function() {
+      $('#fileInput').click();
+    });
+
+    $('#fileInput').change(function() {
+      var formData = new FormData($('#uploadForm')[0]);
+      $.ajax({
+        url: '/upload',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+          var imageUrl = '/uploads/' + response.result;
+          var imgElement = $('<img>').attr('src', imageUrl).addClass('uploaded-image');
+          $('#chatWindow').append(imgElement);
+        },
+        error: function(response) {
+          alert('图片上传失败: ' + response.responseJSON.error.message);
+        }
+      });
+    });
+
+    $('#chatBtn').click(function() {
+      var prompts = $('#chatInput').val();
+      var apiKey = $('.api-key').val();
+      var apiUrl = $('.api-url').val();
+      var model = $('.model').val();
+      var aiService = $('.ai-service').val();
+      var url = aiService === 'geminiai' ? '/geminiai' : '/chat';
+
+      $.ajax({
+        url: url,
+        type: 'POST',
+        data: {
+          prompts: JSON.stringify([{ role: 'user', content: prompts }]),
+          apiKey: apiKey,
+          apiUrl: apiUrl,
+          model: model
+        },
+        success: function(response) {
+          var messages = response.split('\n');
+          messages.forEach(function(message) {
+            var messageElement = $('<div>').text(message);
+            $('#chatWindow').append(messageElement);
+          });
+        },
+        error: function(response) {
+          alert('请求失败: ' + response.responseJSON.error.message);
+        }
+      });
+    });
+  });
+</script>
